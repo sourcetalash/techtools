@@ -9,7 +9,7 @@ function hasApiKey() {
 
 export type GeneratedFiles = Record<string, string>
 
-export async function generateProjectFiles(prompt: string, type: 'static' | 'react' | 'vue'): Promise<GeneratedFiles> {
+export async function generateProjectFiles(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next'): Promise<GeneratedFiles> {
   if (!hasApiKey()) {
     return fallbackMock(prompt, type)
   }
@@ -51,18 +51,18 @@ export async function applyChatChange(message: string, state: AppState): Promise
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
     const files = JSON.parse(jsonStr) as GeneratedFiles
-    return { files: normalizeFiles(files, state.type || 'static'), summary: 'Updated project files.' }
+    return { files: normalizeFiles(files, (state.type || 'static') as any), summary: 'Updated project files.' }
   } catch (e) {
     return { files: state.files, summary: 'Failed to apply change.' }
   }
 }
 
-function buildPrompt(prompt: string, type: 'static' | 'react' | 'vue') {
+function buildPrompt(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next') {
   const base = `Generate a minimal but complete ${type} website project. Include necessary config files for running in Sandpack. Keep file count small.`
   return `${base}\nUser prompt: ${prompt}`
 }
 
-function normalizeFiles(files: GeneratedFiles, type: 'static' | 'react' | 'vue'): GeneratedFiles {
+function normalizeFiles(files: GeneratedFiles, type: 'static' | 'react' | 'vue' | 'angular' | 'next'): GeneratedFiles {
   // Ensure leading slash for Sandpack
   const out: GeneratedFiles = {}
   for (const [k, v] of Object.entries(files)) {
@@ -76,7 +76,7 @@ function normalizeFiles(files: GeneratedFiles, type: 'static' | 'react' | 'vue')
   return out
 }
 
-function fallbackMock(prompt: string, type: 'static' | 'react' | 'vue'): GeneratedFiles {
+function fallbackMock(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next'): GeneratedFiles {
   if (type === 'static') {
     return {
       '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Static Site</title>\n    <style>body{font-family:system-ui;padding:2rem} header{margin-bottom:1rem}</style>\n  </head>\n  <body>\n    <header><h1>Static Site</h1><p>${escapeHtml(prompt)}</p></header>\n    <main><p>Welcome! Edit via chat.</p></main>\n  </body>\n</html>\n`,
@@ -96,6 +96,23 @@ function fallbackMock(prompt: string, type: 'static' | 'react' | 'vue'): Generat
       '/src/main.js': `import { createApp } from 'vue'\nimport App from './App.vue'\ncreateApp(App).mount('#app')`,
       '/src/App.vue': `<template><div style=\"font-family:system-ui;padding:16px\"><h1>Vue App</h1><p>${escapeHtml(prompt)}</p></div></template>`,
       '/package.json': `{"type":"module","scripts":{"dev":"vite"}}`,
+    }
+  }
+  if (type === 'angular') {
+    // Minimal Angular-like scaffold that can run without full CLI build, for preview purposes
+    return {
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Angular (Lite)</title>\n    <script src="https://unpkg.com/zone.js@0.14.10/bundles/zone.umd.min.js"></script>\n    <script src="https://unpkg.com/core-js-bundle/minified.js"></script>\n    <script src="https://unpkg.com/rxjs@7.8.1/bundles/rxjs.umd.min.js"></script>\n    <script type="module" src="/main.ts"></script>\n  </head>\n  <body>\n    <app-root></app-root>\n  </body>\n</html>`,
+      '/main.ts': `import { Component, NgModule, ɵrenderComponent as renderComponent } from 'https://cdn.skypack.dev/@angular/core@17.3.0?min';\n@Component({ selector: 'app-root', template: '<div style=\'font-family:system-ui;padding:16px\'><h1>Angular (Lite)</h1><p>${escapeHtml(prompt)}</p></div>' })\nclass AppComponent {}\nrenderComponent(AppComponent);`,
+      '/package.json': `{"type":"module"}`,
+    }
+  }
+  if (type === 'next') {
+    // Minimal Next.js-like static emulation for preview
+    return {
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Next.js (Static Preview)</title>\n  </head>\n  <body>\n    <div id="__next"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>`,
+      '/src/main.tsx': `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport Home from './pages/index'\ncreateRoot(document.getElementById('__next')!).render(<Home />)`,
+      '/src/pages/index.tsx': `export default function Home(){ return <div style={{fontFamily:'system-ui',padding:16}}><h1>Next.js (Static Preview)</h1><p>${escapeHtml(prompt)}</p></div> }`,
+      '/package.json': `{"type":"module"}`,
     }
   }
   return {}

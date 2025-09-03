@@ -16,7 +16,7 @@ export default function EditorPage() {
 
   useEffect(() => {
     const prompt = sessionStorage.getItem('webgen:prompt') || ''
-    const type = (sessionStorage.getItem('webgen:type') || 'static') as 'static' | 'react' | 'vue' | 'angular'
+    const type = (sessionStorage.getItem('webgen:type') || 'static') as 'static' | 'react' | 'vue' | 'angular' | 'next'
     if (!prompt.trim()) {
       navigate('/')
       return
@@ -43,7 +43,7 @@ export default function EditorPage() {
   const template = useMemo(() => {
     if (snap.type === 'react') return 'react'
     if (snap.type === 'vue') return 'vue'
-    if (snap.type === 'angular') return 'angular'
+    // Angular and Next.js are complex in Sandpack; use vanilla + dev server scripts when possible
     return 'vanilla'
   }, [snap.type])
 
