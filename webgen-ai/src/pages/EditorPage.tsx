@@ -115,6 +115,7 @@ export default function EditorPage() {
           <button onClick={handleDownload} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Download</button>
           <button onClick={handleCapture} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Capture UI</button>
           <button onClick={() => setTheme(getStoredTheme()==='dark'?'light':'dark')} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Theme</button>
+          <button onClick={async()=>{ try { const res=await fetch('/api/projects',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: 'Session', type: appState.type, prompt: appState.prompt, files: appState.files })}); const data=await res.json(); appState.activity.push({ role:'system', text: `Saved project id: ${data.id||'unknown'}`}) } catch{ appState.activity.push({ role:'system', text: 'Save failed' }) } }} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Save</button>
         </div>
       </div>
 

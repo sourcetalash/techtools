@@ -10,6 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { formatFiles, normalizePaths } from './format'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
 const app = express()
@@ -56,6 +57,68 @@ app.post('/api/capture', async (req, res) => {
     res.json({ ok: true, file: `captures/${fname}` })
   } catch (e: any) {
     res.status(400).json({ error: 'invalid_payload' })
+  }
+})
+
+// Simple file-based persistence for projects
+const DATA_DIR = path.join(process.cwd(), 'data', 'projects')
+async function ensureDataDir() {
+  await fs.mkdir(DATA_DIR, { recursive: true })
+}
+
+app.post('/api/projects', async (req, res) => {
+  try {
+    await ensureDataDir()
+    const schema = z.object({ name: z.string().optional(), type: z.enum(['static','react','vue','angular','next']).nullable(), prompt: z.string().optional(), files: z.record(z.string()) })
+    const parsed = schema.parse(req.body)
+    const id = randomUUID()
+    const filePath = path.join(DATA_DIR, `${id}.json`)
+    await fs.writeFile(filePath, JSON.stringify({ id, ...parsed, createdAt: Date.now(), updatedAt: Date.now() }, null, 2))
+    res.json({ id })
+  } catch (e) {
+    res.status(400).json({ error: 'invalid_payload' })
+  }
+})
+
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    await ensureDataDir()
+    const id = req.params.id
+    const filePath = path.join(DATA_DIR, `${id}.json`)
+    const exists = await fs.access(filePath).then(() => true).catch(() => false)
+    if (!exists) return res.status(404).json({ error: 'not_found' })
+    const schema = z.object({ name: z.string().optional(), type: z.enum(['static','react','vue','angular','next']).nullable(), prompt: z.string().optional(), files: z.record(z.string()) })
+    const parsed = schema.parse(req.body)
+    await fs.writeFile(filePath, JSON.stringify({ id, ...parsed, updatedAt: Date.now() }, null, 2))
+    res.json({ id })
+  } catch (e) {
+    res.status(400).json({ error: 'invalid_payload' })
+  }
+})
+
+app.get('/api/projects/:id', async (req, res) => {
+  try {
+    await ensureDataDir()
+    const filePath = path.join(DATA_DIR, `${req.params.id}.json`)
+    const data = await fs.readFile(filePath, 'utf8')
+    res.type('application/json').send(data)
+  } catch (e) {
+    res.status(404).json({ error: 'not_found' })
+  }
+})
+
+// Serve built frontend in production
+const DIST_DIR = path.join(process.cwd(), 'dist')
+app.use(express.static(DIST_DIR))
+app.get('*', async (_req, res, next) => {
+  try {
+    const indexPath = path.join(DIST_DIR, 'index.html')
+    const ok = await fs.access(indexPath).then(() => true).catch(() => false)
+    if (!ok) return next()
+    const html = await fs.readFile(indexPath, 'utf8')
+    res.type('text/html').send(html)
+  } catch {
+    next()
   }
 })
 
