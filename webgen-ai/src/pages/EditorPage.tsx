@@ -30,7 +30,8 @@ export default function EditorPage() {
           appState.prompt = prompt
           appState.type = type
           setStatus('ready')
-          appState.activity.push({ role: 'system', text: `Generated initial ${type} project.` })
+          appState.activity.push({ role: 'user', text: prompt })
+          appState.activity.push({ role: 'assistant', text: `Generated initial ${type} project with ${Object.keys(files).length} files.` })
         })
         .catch((e) => {
           setError(String(e))
