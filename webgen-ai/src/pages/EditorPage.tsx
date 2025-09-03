@@ -14,6 +14,7 @@ export default function EditorPage() {
   const snap = useSnapshot(appState)
   const [status, setStatus] = useState<'idle' | 'generating' | 'ready' | 'error'>('idle')
   const [error, setError] = useState<string>('')
+  const [chatBusy, setChatBusy] = useState(false)
   const startedRef = useRef(false)
 
   useEffect(() => {
@@ -71,10 +72,18 @@ export default function EditorPage() {
   }
 
   async function handleChat(message: string) {
-    const reply = await applyChatChange(message, appState)
+    // Echo immediately and disable input while applying
     appState.activity.push({ role: 'user', text: message })
-    appState.activity.push({ role: 'assistant', text: reply.summary })
-    appState.files = reply.files
+    setChatBusy(true)
+    try {
+      const reply = await applyChatChange(message, appState)
+      appState.activity.push({ role: 'assistant', text: reply.summary })
+      appState.files = reply.files
+    } catch (e) {
+      appState.activity.push({ role: 'assistant', text: 'Failed to apply change.' })
+    } finally {
+      setChatBusy(false)
+    }
   }
 
   return (
@@ -83,7 +92,7 @@ export default function EditorPage() {
         <div className="flex items-center gap-3">
           <span className="font-medium">Editor</span>
           <span className="text-sm opacity-70">{snap.type?.toUpperCase()}</span>
-          <span className="text-sm opacity-70">{status}</span>
+          <span className="text-sm opacity-70">{status}{chatBusy ? ' · applying…' : ''}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleDownload} className="rounded border px-3 py-1">Download</button>
@@ -115,7 +124,7 @@ export default function EditorPage() {
               </div>
             ))}
           </div>
-          <ChatInput onSend={handleChat} disabled={status !== 'ready'} />
+          <ChatInput onSend={handleChat} disabled={status !== 'ready' || chatBusy} />
         </div>
       </div>
     </div>
