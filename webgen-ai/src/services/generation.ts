@@ -80,7 +80,7 @@ export async function applyChatChange(message: string, state: AppState): Promise
 }
 
 function buildPrompt(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next') {
-  const base = `Generate a minimal but complete ${type} website project. Include necessary config files for running in Sandpack. Keep file count small.`
+  const base = `Generate a minimal but complete ${type} website project. Keep it modern, vibrant, professional with responsive layout, accessible colors, and smooth subtle animations. Prefer Inter font or system fallback. Include necessary config files for running in a browser-only environment (no servers). Keep file count small.`
   return `${base}\nUser prompt: ${prompt}`
 }
 
