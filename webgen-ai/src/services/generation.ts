@@ -88,7 +88,7 @@ function normalizeFiles(files: GeneratedFiles, type: 'static' | 'react' | 'vue' 
   // Ensure leading slash for Sandpack
   const out: GeneratedFiles = {}
   for (const [k, v] of Object.entries(files)) {
-    const path = k.startsWith('/') ? k : '/' + k
+    const path = (k.startsWith('/') ? k : '/' + k).replace(/\\/g, '/')
     out[path] = v
   }
   // Basic fallbacks if model misses

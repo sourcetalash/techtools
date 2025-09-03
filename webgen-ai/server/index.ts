@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 import pino from 'pino'
 import { z } from 'zod'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { formatFiles, normalizePaths } from './format'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
 const app = express()
@@ -42,8 +43,10 @@ app.post('/api/generate', async (req, res) => {
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
-    const files = JSON.parse(jsonStr)
-    res.json({ files })
+    const raw = JSON.parse(jsonStr)
+    const files = normalizePaths(raw)
+    const formatted = await formatFiles(files)
+    res.json({ files: formatted })
   } catch (e: any) {
     logger.error({ err: e }, 'generate failed')
     res.status(500).json({ error: 'generation_failed' })
@@ -65,8 +68,10 @@ app.post('/api/chat', async (req, res) => {
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
-    const files = JSON.parse(jsonStr)
-    res.json({ files })
+    const raw = JSON.parse(jsonStr)
+    const files = normalizePaths(raw)
+    const formatted = await formatFiles(files)
+    res.json({ files: formatted })
   } catch (e: any) {
     logger.error({ err: e }, 'chat failed')
     res.status(500).json({ error: 'chat_failed' })
