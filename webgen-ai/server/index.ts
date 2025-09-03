@@ -48,8 +48,15 @@ app.post('/api/generate', async (req, res) => {
     const formatted = await formatFiles(files)
     res.json({ files: formatted })
   } catch (e: any) {
-    logger.error({ err: e }, 'generate failed')
-    res.status(500).json({ error: 'generation_failed' })
+    logger.error({ err: e }, 'generate failed, falling back')
+    try {
+      const fallback = await generateFallback(parse.data.prompt, parse.data.type)
+      const formatted = await formatFiles(fallback)
+      return res.json({ files: formatted, source: 'fallback' })
+    } catch (inner: any) {
+      logger.error({ err: inner }, 'fallback generation failed')
+      return res.status(500).json({ error: 'generation_failed' })
+    }
   }
 })
 
@@ -73,10 +80,61 @@ app.post('/api/chat', async (req, res) => {
     const formatted = await formatFiles(files)
     res.json({ files: formatted })
   } catch (e: any) {
-    logger.error({ err: e }, 'chat failed')
-    res.status(500).json({ error: 'chat_failed' })
+    logger.error({ err: e }, 'chat failed, applying heuristic')
+    // Heuristic: append a comment to the most likely entry file
+    const current = parse.data.state.files
+    const files = { ...current }
+    const target = Object.keys(files).find((p) => p.endsWith('index.html') || p.endsWith('App.tsx') || p.endsWith('App.vue') || p.endsWith('main.ts') || p.endsWith('pages/index.tsx'))
+    if (target) {
+      files[target] = files[target] + `\n<!-- ${parse.data.message} -->\n`
+    }
+    const formatted = await formatFiles(files)
+    res.json({ files: formatted, source: 'fallback' })
   }
 })
+
+async function generateFallback(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next'): Promise<Record<string, string>> {
+  function escapeHtml(s: string) {
+    return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string))
+  }
+  if (type === 'static') {
+    return normalizePaths({
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Static Site</title>\n    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">\n    <style>body{font-family:Inter,system-ui;padding:2rem;margin:0;background:#0b1020;color:#e6edf3}header{margin-bottom:1.5rem}section{margin:1rem 0}.card{background:#121a33;border:1px solid #2a2f45;border-radius:12px;padding:16px}</style>\n  </head>\n  <body>\n    <header><h1>Static Site</h1><p>${escapeHtml(prompt)}</p></header>\n    <main>\n      <section class="card"><h2>Features</h2><ul><li>Fast</li><li>Responsive</li><li>Accessible</li></ul></section>\n      <section class="card"><h2>Contact</h2><p>hello@example.com</p></section>\n    </main>\n  </body>\n</html>`,
+    })
+  }
+  if (type === 'react') {
+    return normalizePaths({
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>React App</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>`,
+      '/src/main.tsx': `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport App from './App'\ncreateRoot(document.getElementById('root')!).render(<App />)`,
+      '/src/App.tsx': `export default function App(){ return <div style={{fontFamily:'Inter, system-ui',padding:24,background:'#0b1020',minHeight:'100vh',color:'#e6edf3'}}><h1 style={{marginTop:0}}>React App</h1><p>${escapeHtml(prompt)}</p><section style={{background:'#121a33',border:'1px solid #2a2f45',borderRadius:12,padding:16,marginTop:16}}><h2>Features</h2><ul><li>Fast</li><li>Responsive</li><li>Accessible</li></ul></section></div> }`,
+      '/package.json': `{"type":"module","scripts":{"dev":"vite"}}`,
+    })
+  }
+  if (type === 'vue') {
+    return normalizePaths({
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Vue App</title>\n  </head>\n  <body>\n    <div id="app"></div>\n    <script type="module" src="/src/main.js"></script>\n  </body>\n</html>`,
+      '/src/main.js': `import { createApp } from 'vue'\nimport App from './App.vue'\ncreateApp(App).mount('#app')`,
+      '/src/App.vue': `<template><div style=\"font-family:Inter, system-ui;padding:24px;background:#0b1020;min-height:100vh;color:#e6edf3\"><h1 style=\"margin-top:0\">Vue App</h1><p>${escapeHtml(prompt)}</p><section style=\"background:#121a33;border:1px solid #2a2f45;border-radius:12px;padding:16px;margin-top:16px\"><h2>Features</h2><ul><li>Fast</li><li>Responsive</li><li>Accessible</li></ul></section></div></template>`,
+      '/package.json': `{"type":"module","scripts":{"dev":"vite"}}`,
+    })
+  }
+  if (type === 'angular') {
+    return normalizePaths({
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Angular (Lite)</title>\n    <script src="https://unpkg.com/zone.js@0.14.10/bundles/zone.umd.min.js"></script>\n    <script src="https://unpkg.com/core-js-bundle/minified.js"></script>\n    <script src="https://unpkg.com/rxjs@7.8.1/bundles/rxjs.umd.min.js"></script>\n    <script type="module" src="/main.ts"></script>\n  </head>\n  <body>\n    <app-root></app-root>\n  </body>\n</html>`,
+      '/main.ts': `import { Component, ɵrenderComponent as renderComponent } from 'https://cdn.skypack.dev/@angular/core@17.3.0?min'\n@Component({ selector: 'app-root', template: '<div style=\'font-family:Inter, system-ui;padding:24px;background:#0b1020;min-height:100vh;color:#e6edf3\'><h1 style=\'margin-top:0\'>Angular (Lite)</h1><p>${escapeHtml(prompt)}</p><section style=\'background:#121a33;border:1px solid #2a2f45;border-radius:12px;padding:16px;margin-top:16px\'><h2>Features</h2><ul><li>Fast</li><li>Responsive</li><li>Accessible</li></ul></section></div>' })\nclass AppComponent {}\nrenderComponent(AppComponent)`,
+      '/package.json': `{"type":"module"}`,
+    })
+  }
+  if (type === 'next') {
+    return normalizePaths({
+      '/index.html': `<!doctype html>\n<html>\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Next.js (Static Preview)</title>\n  </head>\n  <body>\n    <div id="__next"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>`,
+      '/src/main.tsx': `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport Home from './pages/index'\ncreateRoot(document.getElementById('__next')!).render(<Home />)`,
+      '/src/pages/index.tsx': `export default function Home(){ return <div style={{fontFamily:'Inter, system-ui',padding:24,background:'#0b1020',minHeight:'100vh',color:'#e6edf3'}}><h1 style={{marginTop:0}}>Next.js (Static Preview)</h1><p>${escapeHtml(prompt)}</p><section style={{background:'#121a33',border:'1px solid #2a2f45',borderRadius:12,padding:16,marginTop:16}}><h2>Features</h2><ul><li>Fast</li><li>Responsive</li><li>Accessible</li></ul></section></div> }`,
+      '/package.json': `{"type":"module"}`,
+    })
+  }
+  return {}
+}
 
 const port = Number(process.env.PORT || 5174)
 app.listen(port, () => {

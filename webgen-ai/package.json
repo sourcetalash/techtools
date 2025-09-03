@@ -55,6 +55,7 @@
     "tailwindcss": "^4.1.12",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.20.5",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2"
