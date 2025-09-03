@@ -7,6 +7,7 @@ import { appState } from '../state/store'
 import { generateProjectFiles, applyChatChange } from '../services/generation'
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
+import * as htmlToImage from 'html-to-image'
 
 export default function EditorPage() {
   const navigate = useNavigate()
@@ -57,6 +58,15 @@ export default function EditorPage() {
     saveAs(blob, `project-${appState.type || 'site'}.zip`)
   }
 
+  async function handleCapture() {
+    const container = document.querySelector('[data-editor-root="true"]') as HTMLElement | null
+    if (!container) return
+    const dataUrl = await htmlToImage.toPng(container, { pixelRatio: 2 })
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
+    saveAs(blob, `ui-capture-${Date.now()}.png`)
+  }
+
   async function handleChat(message: string) {
     const reply = await applyChatChange(message, appState)
     appState.activity.push({ role: 'user', text: message })
@@ -65,7 +75,7 @@ export default function EditorPage() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div className="min-h-dvh flex flex-col" data-editor-root="true">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-3">
           <span className="font-medium">Editor</span>
@@ -74,6 +84,7 @@ export default function EditorPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleDownload} className="rounded border px-3 py-1">Download</button>
+          <button onClick={handleCapture} className="rounded border px-3 py-1">Capture UI</button>
         </div>
       </div>
 
