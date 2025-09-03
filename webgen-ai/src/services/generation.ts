@@ -10,6 +10,18 @@ function hasApiKey() {
 export type GeneratedFiles = Record<string, string>
 
 export async function generateProjectFiles(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next'): Promise<GeneratedFiles> {
+  // Try backend first for enterprise use (key secured server-side)
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, type }),
+    })
+    if (resp.ok) {
+      const data = await resp.json()
+      return normalizeFiles(data.files as GeneratedFiles, type)
+    }
+  } catch {}
   if (!hasApiKey()) {
     return fallbackMock(prompt, type)
   }
@@ -31,8 +43,18 @@ export async function generateProjectFiles(prompt: string, type: 'static' | 'rea
 }
 
 export async function applyChatChange(message: string, state: AppState): Promise<{ files: GeneratedFiles, summary: string }> {
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, state: { type: state.type, files: state.files } }),
+    })
+    if (resp.ok) {
+      const data = await resp.json()
+      return { files: normalizeFiles(data.files as GeneratedFiles, (state.type || 'static') as any), summary: 'Updated project files.' }
+    }
+  } catch {}
   if (!hasApiKey()) {
-    // Simple heuristic: append comment to index or main file
     const files = { ...state.files }
     const target = Object.keys(files).find((p) => p.endsWith('index.html') || p.endsWith('App.tsx') || p.endsWith('App.vue'))
     if (target) {
