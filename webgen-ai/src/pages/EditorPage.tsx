@@ -65,6 +65,9 @@ export default function EditorPage() {
     const res = await fetch(dataUrl)
     const blob = await res.blob()
     saveAs(blob, `ui-capture-${Date.now()}.png`)
+    try {
+      await fetch('/api/capture', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) })
+    } catch {}
   }
 
   async function handleChat(message: string) {

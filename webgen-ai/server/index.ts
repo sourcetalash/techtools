@@ -8,6 +8,8 @@ import pino from 'pino'
 import { z } from 'zod'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { formatFiles, normalizePaths } from './format'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
 const app = express()
@@ -26,6 +28,23 @@ const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-pro'
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
+})
+
+app.post('/api/capture', async (req, res) => {
+  try {
+    const schema = z.object({ dataUrl: z.string().url().startsWith('data:image/png'), name: z.string().optional() })
+    const parsed = schema.parse(req.body)
+    const base64 = parsed.dataUrl.split(',')[1]
+    const buf = Buffer.from(base64, 'base64')
+    const fname = (parsed.name || `ui-capture-${Date.now()}.png`).replace(/[^a-zA-Z0-9._-]/g, '_')
+    const dir = path.join(process.cwd(), 'captures')
+    await fs.mkdir(dir, { recursive: true })
+    const fpath = path.join(dir, fname)
+    await fs.writeFile(fpath, buf)
+    res.json({ ok: true, file: `captures/${fname}` })
+  } catch (e: any) {
+    res.status(400).json({ error: 'invalid_payload' })
+  }
 })
 
 const generateSchema = z.object({ prompt: z.string().min(1), type: z.enum(['static','react','vue','angular','next']) })
