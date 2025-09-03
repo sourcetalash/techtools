@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSnapshot } from 'valtio'
 import { appState } from '../state/store'
 import { generateProjectFiles, applyChatChange } from '../services/generation'
+import { diffFiles } from '../lib/diff'
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import * as htmlToImage from 'html-to-image'
@@ -32,6 +33,9 @@ export default function EditorPage() {
       setStatus('generating')
       generateProjectFiles(prompt, type, (msg) => appState.activity.push({ role: 'system', text: msg }))
         .then((files) => {
+          const diff = diffFiles({}, files)
+          appState.activity.push({ role: 'system', text: `Prompt: ${prompt}` })
+          appState.activity.push({ role: 'system', text: `Files created (${diff.created.length}):\n${diff.created.join('\n')}` })
           appState.files = files
           appState.prompt = prompt
           appState.type = type
@@ -81,9 +85,17 @@ export default function EditorPage() {
     appState.activity.push({ role: 'user', text: message })
     setChatBusy(true)
     try {
+      const before = { ...appState.files }
+      appState.activity.push({ role: 'system', text: `Question: ${message}` })
       const reply = await applyChatChange(message, appState, (msg) => appState.activity.push({ role: 'system', text: msg }))
       appState.activity.push({ role: 'assistant', text: reply.summary })
-      appState.files = reply.files
+      const after = reply.files
+      const diff = diffFiles(before, after)
+      appState.activity.push({ role: 'system', text: `Process: updating files based on request` })
+      appState.activity.push({ role: 'system', text: `Files created (${diff.created.length}):\n${diff.created.join('\n')}` })
+      appState.activity.push({ role: 'system', text: `Files updated (${diff.updated.length}):\n${diff.updated.join('\n')}` })
+      if (diff.deleted.length) appState.activity.push({ role: 'system', text: `Files deleted (${diff.deleted.length}):\n${diff.deleted.join('\n')}` })
+      appState.files = after
     } catch (e) {
       appState.activity.push({ role: 'assistant', text: 'Failed to apply change.' })
     } finally {
