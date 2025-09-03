@@ -8,6 +8,7 @@ import { generateProjectFiles, applyChatChange } from '../services/generation'
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import * as htmlToImage from 'html-to-image'
+import { setTheme, getStoredTheme } from '../theme'
 
 export default function EditorPage() {
   const navigate = useNavigate()
@@ -99,6 +100,7 @@ export default function EditorPage() {
         <div className="flex items-center gap-2">
           <button onClick={handleDownload} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Download</button>
           <button onClick={handleCapture} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Capture UI</button>
+          <button onClick={() => setTheme(getStoredTheme()==='dark'?'light':'dark')} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Theme</button>
         </div>
       </div>
 
