@@ -9,9 +9,15 @@ function hasApiKey() {
 
 export type GeneratedFiles = Record<string, string>
 
-export async function generateProjectFiles(prompt: string, type: 'static' | 'react' | 'vue' | 'angular' | 'next'): Promise<GeneratedFiles> {
+export async function generateProjectFiles(
+  prompt: string,
+  type: 'static' | 'react' | 'vue' | 'angular' | 'next',
+  onProgress?: (message: string) => void,
+): Promise<GeneratedFiles> {
+  onProgress?.('Enhancing prompt and generating project files...')
   // Try backend first for enterprise use (key secured server-side)
   try {
+    onProgress?.('Requesting backend generator...')
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -22,10 +28,14 @@ export async function generateProjectFiles(prompt: string, type: 'static' | 'rea
       if (data.enhancedPrompt) {
         ;(window as any).__lastEnhancedPrompt = data.enhancedPrompt
       }
-      return normalizeFiles(data.files as GeneratedFiles, type)
+      onProgress?.('Formatting and normalizing files...')
+      const files = normalizeFiles(data.files as GeneratedFiles, type)
+      onProgress?.('Applying project files...')
+      return files
     }
   } catch {}
   if (!hasApiKey()) {
+    onProgress?.('Using local fallback template...')
     return fallbackMock(prompt, type)
   }
   try {
@@ -33,20 +43,29 @@ export async function generateProjectFiles(prompt: string, type: 'static' | 'rea
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
     const system = `You are an expert software generator. Output a JSON object mapping file paths to UTF-8 text content. Do not wrap in markdown. Only valid JSON.`
     const user = buildPrompt(prompt, type)
+    onProgress?.('Calling Gemini to generate files...')
     const res = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: system + '\n\n' + user }] }] })
     const text = res.response.text()
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
     const files = JSON.parse(jsonStr) as GeneratedFiles
+    onProgress?.('Formatting and normalizing files...')
     return normalizeFiles(files, type)
   } catch (e) {
+    onProgress?.('Using local fallback template...')
     return fallbackMock(prompt, type)
   }
 }
 
-export async function applyChatChange(message: string, state: AppState): Promise<{ files: GeneratedFiles, summary: string }> {
+export async function applyChatChange(
+  message: string,
+  state: AppState,
+  onProgress?: (message: string) => void,
+): Promise<{ files: GeneratedFiles, summary: string }> {
+  onProgress?.('Understanding your request...')
   try {
+    onProgress?.('Requesting backend refactor...')
     const resp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -54,10 +73,12 @@ export async function applyChatChange(message: string, state: AppState): Promise
     })
     if (resp.ok) {
       const data = await resp.json()
+      onProgress?.('Applying updated files...')
       return { files: normalizeFiles(data.files as GeneratedFiles, (state.type || 'static') as any), summary: 'Updated project files.' }
     }
   } catch {}
   if (!hasApiKey()) {
+    onProgress?.('Applying heuristic change locally...')
     const files = { ...state.files }
     const target = Object.keys(files).find((p) => p.endsWith('index.html') || p.endsWith('App.tsx') || p.endsWith('App.vue'))
     if (target) {
@@ -70,12 +91,14 @@ export async function applyChatChange(message: string, state: AppState): Promise
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
     const system = `You are a code refactoring agent. Given current project files as JSON and a request, output full updated files as JSON (path->content), no markdown.`
     const user = `Project type: ${state.type}\nUser request: ${message}\nCurrent files JSON: ${JSON.stringify(state.files)}`
+    onProgress?.('Calling Gemini to update code...')
     const res = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: system + '\n\n' + user }] }] })
     const text = res.response.text()
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
     const files = JSON.parse(jsonStr) as GeneratedFiles
+    onProgress?.('Applying updated files...')
     return { files: normalizeFiles(files, (state.type || 'static') as any), summary: 'Updated project files.' }
   } catch (e) {
     return { files: state.files, summary: 'Failed to apply change.' }

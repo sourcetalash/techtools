@@ -30,7 +30,7 @@ export default function EditorPage() {
     if (!startedRef.current) {
       startedRef.current = true
       setStatus('generating')
-      generateProjectFiles(prompt, type)
+      generateProjectFiles(prompt, type, (msg) => appState.activity.push({ role: 'system', text: msg }))
         .then((files) => {
           appState.files = files
           appState.prompt = prompt
@@ -81,7 +81,7 @@ export default function EditorPage() {
     appState.activity.push({ role: 'user', text: message })
     setChatBusy(true)
     try {
-      const reply = await applyChatChange(message, appState)
+      const reply = await applyChatChange(message, appState, (msg) => appState.activity.push({ role: 'system', text: msg }))
       appState.activity.push({ role: 'assistant', text: reply.summary })
       appState.files = reply.files
     } catch (e) {
