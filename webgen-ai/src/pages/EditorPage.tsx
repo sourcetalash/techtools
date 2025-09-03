@@ -36,7 +36,9 @@ export default function EditorPage() {
           appState.prompt = prompt
           appState.type = type
           setStatus('ready')
+          const enhanced = (window as any).__lastEnhancedPrompt as string | undefined
           appState.activity.push({ role: 'user', text: prompt })
+          if (enhanced) appState.activity.push({ role: 'system', text: 'Enhanced brief:\n' + enhanced })
           appState.activity.push({ role: 'assistant', text: `Generated initial ${type} project with ${Object.keys(files).length} files.` })
         })
         .catch((e) => {

@@ -19,6 +19,9 @@ export async function generateProjectFiles(prompt: string, type: 'static' | 'rea
     })
     if (resp.ok) {
       const data = await resp.json()
+      if (data.enhancedPrompt) {
+        ;(window as any).__lastEnhancedPrompt = data.enhancedPrompt
+      }
       return normalizeFiles(data.files as GeneratedFiles, type)
     }
   } catch {}

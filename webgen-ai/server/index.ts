@@ -67,8 +67,10 @@ app.post('/api/generate', async (req, res) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
     const model = genAI.getGenerativeModel({ model: modelName })
+    // Enhance prompt first
+    const enhancedPrompt = await enhancePrompt(model, parse.data.prompt)
     const system = `You are an expert software generator. Output a JSON mapping file paths to content (UTF-8). No markdown. Minimal but complete ${parse.data.type} project that runs in a browser-only environment.`
-    const user = `User prompt: ${parse.data.prompt}`
+    const user = `Enhanced brief:\n${enhancedPrompt}`
     const text = await aiGenerateWithRetry(model, system + '\n\n' + user)
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
@@ -76,13 +78,14 @@ app.post('/api/generate', async (req, res) => {
     const raw = JSON.parse(jsonStr)
     const files = normalizePaths(raw)
     const formatted = await formatFiles(files)
-    res.json({ files: formatted })
+    res.json({ files: formatted, enhancedPrompt })
   } catch (e: any) {
     logger.error({ err: e }, 'generate failed, falling back')
     try {
-      const fallback = await generateFallback(parse.data.prompt, parse.data.type)
+      const enhancedPrompt = heuristicEnhance(parse.data.prompt)
+      const fallback = await generateFallback(enhancedPrompt, parse.data.type)
       const formatted = await formatFiles(fallback)
-      return res.json({ files: formatted, source: 'fallback' })
+      return res.json({ files: formatted, source: 'fallback', enhancedPrompt })
     } catch (inner: any) {
       logger.error({ err: inner }, 'fallback generation failed')
       return res.status(500).json({ error: 'generation_failed' })
@@ -99,7 +102,8 @@ app.post('/api/chat', async (req, res) => {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
     const model = genAI.getGenerativeModel({ model: modelName })
     const system = `You are a refactoring agent. Given current project files as JSON and a request, output full updated files as JSON object (path->content). No markdown.`
-    const user = `Project type: ${parse.data.state.type}\nUser request: ${parse.data.message}\nCurrent files JSON: ${JSON.stringify(parse.data.state.files)}`
+    const enhancedMessage = await enhancePrompt(model, parse.data.message)
+    const user = `Project type: ${parse.data.state.type}\nEnhanced user request: ${enhancedMessage}\nCurrent files JSON: ${JSON.stringify(parse.data.state.files)}`
     const text = await aiGenerateWithRetry(model, system + '\n\n' + user)
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
@@ -180,6 +184,32 @@ async function aiGenerateWithRetry(model: any, text: string, attempts = 3, timeo
     }
   }
   throw lastErr
+}
+
+async function enhancePrompt(model: any, input: string): Promise<string> {
+  const instr = `You are a senior UX engineer and product designer. Rewrite and enrich the following website/app prompt into a concise, detailed brief (<=250 words) including: goals, target audience, pages/sections, components, color palette (HEX), typography, layout, accessibility, performance/SEO, and animation tone. Output plain text only.`
+  try {
+    const text = await aiGenerateWithRetry(model, instr + '\n\nOriginal prompt:\n' + input)
+    return text.trim()
+  } catch {
+    return heuristicEnhance(input)
+  }
+}
+
+function heuristicEnhance(input: string): string {
+  return [
+    'Goals: modern, responsive, accessible UI with fast load and SEO meta.',
+    'Audience: general web users; mobile-first experience.',
+    'Sections: Hero, Features, CTA, Pricing/Plans, Testimonials, Footer.',
+    'Components: Navbar, Cards, Buttons, Badges, Grid, Forms.',
+    'Colors: #0b1020, #2b5bd7, #e6edf3, #b9c2cf, #121a33.',
+    'Typography: Inter, system-ui; clear hierarchy.',
+    'Layout: fluid grid with sensible spacing, sticky nav.',
+    'Accessibility: contrast-compliant, semantic HTML, focus styles.',
+    'Performance: minimal assets, lazy load images, meta tags.',
+    'Animation: subtle transitions (opacity/transform, 150–300ms).',
+    'User prompt: ' + input,
+  ].join('\n')
 }
 
 const port = Number(process.env.PORT || 5174)
