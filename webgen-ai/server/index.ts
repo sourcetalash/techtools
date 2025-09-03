@@ -13,7 +13,19 @@ import path from 'node:path'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
 const app = express()
-app.use(helmet())
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "script-src": ["'self'", "'unsafe-inline'", "blob:"],
+      "style-src": ["'self'", "'unsafe-inline'", "https:"],
+      "img-src": ["'self'", "data:", "blob:", "https:"],
+      "connect-src": ["'self'", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}))
 app.use(cors({ origin: true, credentials: false }))
 app.use(compression())
 app.use(express.json({ limit: '2mb' }))
@@ -57,8 +69,7 @@ app.post('/api/generate', async (req, res) => {
     const model = genAI.getGenerativeModel({ model: modelName })
     const system = `You are an expert software generator. Output a JSON mapping file paths to content (UTF-8). No markdown. Minimal but complete ${parse.data.type} project that runs in a browser-only environment.`
     const user = `User prompt: ${parse.data.prompt}`
-    const resp = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: system + '\n\n' + user }] }] })
-    const text = resp.response.text()
+    const text = await aiGenerateWithRetry(model, system + '\n\n' + user)
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
@@ -89,8 +100,7 @@ app.post('/api/chat', async (req, res) => {
     const model = genAI.getGenerativeModel({ model: modelName })
     const system = `You are a refactoring agent. Given current project files as JSON and a request, output full updated files as JSON object (path->content). No markdown.`
     const user = `Project type: ${parse.data.state.type}\nUser request: ${parse.data.message}\nCurrent files JSON: ${JSON.stringify(parse.data.state.files)}`
-    const resp = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: system + '\n\n' + user }] }] })
-    const text = resp.response.text()
+    const text = await aiGenerateWithRetry(model, system + '\n\n' + user)
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}') + 1
     const jsonStr = text.slice(jsonStart, jsonEnd)
@@ -153,6 +163,23 @@ async function generateFallback(prompt: string, type: 'static' | 'react' | 'vue'
     })
   }
   return {}
+}
+
+async function aiGenerateWithRetry(model: any, text: string, attempts = 3, timeoutMs = 20000): Promise<string> {
+  let lastErr: any
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const controller = new AbortController()
+      const id = setTimeout(() => controller.abort(), timeoutMs)
+      const resp = await model.generateContent({ contents: [{ role: 'user', parts: [{ text }] }] }, { signal: controller.signal as any })
+      clearTimeout(id)
+      return resp.response.text()
+    } catch (e) {
+      lastErr = e
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)))
+    }
+  }
+  throw lastErr
 }
 
 const port = Number(process.env.PORT || 5174)

@@ -95,8 +95,8 @@ export default function EditorPage() {
           <span className="text-sm opacity-70">{status}{chatBusy ? ' · applying…' : ''}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleDownload} className="rounded border px-3 py-1">Download</button>
-          <button onClick={handleCapture} className="rounded border px-3 py-1">Capture UI</button>
+          <button onClick={handleDownload} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Download</button>
+          <button onClick={handleCapture} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Capture UI</button>
         </div>
       </div>
 
@@ -118,9 +118,9 @@ export default function EditorPage() {
           <div className="p-2 border-b font-medium">Chat</div>
           <div className="flex-1 overflow-auto p-2 space-y-2">
             {snap.activity.map((m, i) => (
-              <div key={i} className="text-sm">
+              <div key={i} className="text-sm transition-all">
                 <span className="font-semibold mr-1">{m.role}:</span>
-                <span className="whitespace-pre-wrap">{m.text}</span>
+                <span className="whitespace-pre-wrap opacity-90">{m.text}</span>
               </div>
             ))}
           </div>
@@ -142,14 +142,14 @@ function ChatInput({ onSend, disabled }: { onSend: (text: string) => void | Prom
   return (
     <div className="p-2 border-t flex items-center gap-2">
       <input
-        className="flex-1 rounded border px-2 py-1"
+        className="flex-1 rounded border px-2 py-1 transition-shadow focus:ring-2 focus:ring-blue-500"
         placeholder={disabled ? 'Generating...' : 'Ask to change something...'}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         disabled={disabled}
         onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
       />
-      <button onClick={submit} disabled={disabled} className="rounded border px-3 py-1">Send</button>
+      <button onClick={submit} disabled={disabled} className="rounded border px-3 py-1 transition-transform hover:scale-[1.02] active:scale-[0.98]">Send</button>
     </div>
   )
 }
