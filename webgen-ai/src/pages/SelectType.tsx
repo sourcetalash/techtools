@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Layout from '../components/Layout'
 import { getTemplatesForType } from '../data/templates'
 
 type Framework = 'static' | 'react' | 'vue' | 'angular' | 'next'
@@ -28,17 +29,28 @@ export default function SelectType() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center gap-6 p-6">
-      <h2 className="text-2xl font-medium">Select website type</h2>
-      <p className="opacity-70 max-w-2xl text-center">{prompt || 'No prompt set'}</p>
-      <div className="grid grid-cols-5 gap-4">
-        <button onClick={() => choose('static')} className="rounded-md border px-6 py-3 hover:bg-white/5">Static HTML/CSS</button>
-        <button onClick={() => choose('react')} className="rounded-md border px-6 py-3 hover:bg-white/5">React</button>
-        <button onClick={() => choose('vue')} className="rounded-md border px-6 py-3 hover:bg-white/5">Vue</button>
-        <button onClick={() => choose('angular')} className="rounded-md border px-6 py-3 hover:bg-white/5">Angular</button>
-        <button onClick={() => choose('next')} className="rounded-md border px-6 py-3 hover:bg-white/5">Next.js</button>
-      </div>
-    </div>
+    <Layout>
+      <section className="py-10">
+        <h2 className="text-3xl font-semibold tracking-tight">Select website type</h2>
+        <p className="opacity-80 max-w-3xl mt-2">{prompt || 'No prompt set'}</p>
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <TypeTile title="Static HTML/CSS" onClick={() => choose('static')} subtitle="Vanilla" />
+          <TypeTile title="React" onClick={() => choose('react')} subtitle="Vite SPA" />
+          <TypeTile title="Vue" onClick={() => choose('vue')} subtitle="Vite SPA" />
+          <TypeTile title="Angular" onClick={() => choose('angular')} subtitle="Lite preview" />
+          <TypeTile title="Next.js" onClick={() => choose('next')} subtitle="Static preview" />
+        </div>
+      </section>
+    </Layout>
   )
+
+function TypeTile({ title, subtitle, onClick }: { title: string, subtitle: string, onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 text-left hover:shadow-sm transition-all">
+      <div className="text-lg font-medium">{title}</div>
+      <div className="text-sm opacity-70">{subtitle}</div>
+    </button>
+  )
+}
 }
 

@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Layout from '../components/Layout'
+import { Textarea } from '../components/ui/Textarea'
+import { Button } from '../components/ui/Button'
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -13,25 +16,25 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center gap-6 p-6">
-      <h1 className="text-3xl font-semibold">AI Website Generator</h1>
-      <div className="w-full max-w-2xl flex flex-col gap-3">
-        <textarea
-          className="w-full h-40 rounded-md border border-gray-300 bg-white/5 p-3 outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Describe the website you want..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
-        <button
-          onClick={handleNext}
-          className="self-end rounded-md bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-          disabled={!prompt.trim()}
-        >
-          Next
-        </button>
-      </div>
-      <p className="text-sm opacity-70">Enter a prompt, then choose framework</p>
-    </div>
+    <Layout>
+      <section className="py-12 md:py-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">Generate modern websites with AI</h1>
+          <p className="mt-3 text-base md:text-lg opacity-80">Describe your idea. Choose a framework. Edit with live preview.</p>
+        </div>
+        <div className="mt-8 mx-auto max-w-3xl">
+          <Textarea
+            className="h-40"
+            placeholder="Describe the website you want..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+          <div className="mt-3 flex items-center justify-end">
+            <Button onClick={handleNext} disabled={!prompt.trim()}>Next</Button>
+          </div>
+        </div>
+      </section>
+    </Layout>
   )
 }
 
