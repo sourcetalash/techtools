@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SandpackProvider, SandpackLayout, SandpackCodeEditor, SandpackPreview, SandpackFileExplorer } from '@codesandbox/sandpack-react'
+import { SandpackProvider, SandpackLayout, SandpackPreview, SandpackFileExplorer } from '@codesandbox/sandpack-react'
+import MonacoSandpackEditor from '../components/MonacoSandpackEditor'
 import { useNavigate } from 'react-router-dom'
 import { useSnapshot } from 'valtio'
 import { appState } from '../state/store'
@@ -85,7 +86,7 @@ export default function EditorPage() {
           <SandpackProvider template={template as any} files={files} options={{ activeFile: Object.keys(files)[0] }}>
             <SandpackLayout style={{ height: 'calc(100dvh - 90px)' }}>
               <SandpackFileExplorer />
-              <SandpackCodeEditor showTabs showLineNumbers wrapContent />
+              <MonacoSandpackEditor />
               <SandpackPreview />
             </SandpackLayout>
           </SandpackProvider>
