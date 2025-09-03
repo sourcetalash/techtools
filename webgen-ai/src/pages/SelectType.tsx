@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getTemplatesForType } from '../data/templates'
 
 type Framework = 'static' | 'react' | 'vue' | 'angular' | 'next'
 
@@ -17,6 +18,12 @@ export default function SelectType() {
       return
     }
     sessionStorage.setItem('webgen:type', type)
+    // Store default template hint for the chosen type
+    const templates = getTemplatesForType(type as any)
+    if (templates?.length) {
+      sessionStorage.setItem('webgen:templateId', templates[0].id)
+      sessionStorage.setItem('webgen:templateHint', templates[0].promptHint)
+    }
     navigate('/editor')
   }
 

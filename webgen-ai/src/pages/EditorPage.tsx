@@ -18,7 +18,9 @@ export default function EditorPage() {
   const startedRef = useRef(false)
 
   useEffect(() => {
-    const prompt = sessionStorage.getItem('webgen:prompt') || ''
+    const basePrompt = sessionStorage.getItem('webgen:prompt') || ''
+    const templateHint = sessionStorage.getItem('webgen:templateHint') || ''
+    const prompt = [basePrompt, templateHint].filter(Boolean).join('\n')
     const type = (sessionStorage.getItem('webgen:type') || 'static') as 'static' | 'react' | 'vue' | 'angular' | 'next'
     if (!prompt.trim()) {
       navigate('/')
