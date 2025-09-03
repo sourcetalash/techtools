@@ -4,7 +4,7 @@ export type ActivityItem = { role: 'system' | 'user' | 'assistant', text: string
 
 export type AppState = {
   prompt: string
-  type: 'static' | 'react' | 'vue' | null
+  type: 'static' | 'react' | 'vue' | 'angular' | null
   files: Record<string, string>
   activity: ActivityItem[]
 }
