@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSandpack } from '@codesandbox/sandpack-react'
+import { useSnapshot } from 'valtio'
+import { appState } from '../state/store'
 import Editor, { type OnMount } from '@monaco-editor/react'
 
 function detectLanguage(path: string): string {
@@ -15,6 +17,7 @@ function detectLanguage(path: string): string {
 
 export default function MonacoSandpackEditor() {
   const { sandpack } = useSandpack()
+  const snap = useSnapshot(appState)
   const activePath = sandpack.activeFile
   const file = sandpack.files[activePath]
   const code = file?.code ?? ''
@@ -54,7 +57,10 @@ export default function MonacoSandpackEditor() {
   return (
     <div className="flex flex-col min-h-0 w-full">
       <div className="flex items-center justify-between border-b px-2 py-1 text-sm">
-        <div className="truncate">{activePath}</div>
+        <div className="truncate">
+          {activePath}
+          {snap.currentWriting && snap.currentWriting === activePath ? <span className="ml-2 text-xs opacity-70">(writing...)</span> : null}
+        </div>
         <div className="flex items-center gap-2">
           <button onClick={doFormat} className="rounded border px-2 py-0.5">Format</button>
           <button onClick={toggleWrap} className="rounded border px-2 py-0.5">{wrap ? 'No wrap' : 'Wrap'}</button>

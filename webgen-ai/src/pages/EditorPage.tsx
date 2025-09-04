@@ -36,6 +36,8 @@ export default function EditorPage() {
           const diff = diffFiles({}, files)
           appState.activity.push({ role: 'system', text: `Prompt: ${prompt}` })
           appState.activity.push({ role: 'system', text: `Files created (${diff.created.length}):\n${diff.created.join('\n')}` })
+          appState.recentChanged = [...diff.created]
+          appState.currentWriting = diff.created[0] || null
           appState.files = files
           appState.prompt = prompt
           appState.type = type
@@ -95,6 +97,8 @@ export default function EditorPage() {
       appState.activity.push({ role: 'system', text: `Files created (${diff.created.length}):\n${diff.created.join('\n')}` })
       appState.activity.push({ role: 'system', text: `Files updated (${diff.updated.length}):\n${diff.updated.join('\n')}` })
       if (diff.deleted.length) appState.activity.push({ role: 'system', text: `Files deleted (${diff.deleted.length}):\n${diff.deleted.join('\n')}` })
+      appState.recentChanged = [...diff.created, ...diff.updated]
+      appState.currentWriting = appState.recentChanged[0] || null
       appState.files = after
     } catch (e) {
       appState.activity.push({ role: 'assistant', text: 'Failed to apply change.' })
@@ -125,6 +129,9 @@ export default function EditorPage() {
 
       <div className="flex-1 grid grid-cols-4 min-h-0">
         <div className="col-span-3 min-h-0">
+          {snap.recentChanged.length > 0 && (
+            <div className="px-2 py-1 text-xs border-b">Recent changes: {snap.recentChanged.slice(0,3).join(', ')}{snap.recentChanged.length>3?'…':''}</div>
+          )}
           <SandpackProvider template={template as any} files={files} options={{ activeFile: Object.keys(files)[0] }}>
             <SandpackLayout style={{ height: 'calc(100dvh - 90px)' }}>
               <SandpackFileExplorer />
